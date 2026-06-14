@@ -1,0 +1,1203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="BioTrack">
+<title>BioTrack</title>
+<style>
+  :root {
+    --navy: #0A2540; --teal: #0E7C7B; --teal-light: #E6F4F4;
+    --bg: #F4F6F9; --surface: #FFFFFF; --surface-alt: #EEF1F6;
+    --slate: #4A5568; --muted: #8896A5; --border: #DDE3EC;
+    --danger: #C53030; --success: #276749;
+    --cat-bp: #E53E3E; --cat-glucose: #D69E2E; --cat-o2: #3182CE;
+    --cat-body: #6B46C1; --cat-fitness: #2F855A; --cat-ortho: #C05621;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  /* iPad Safari touch fix */
+  a, button, input, select, textarea, label, div[onclick], span[onclick] { cursor: pointer; touch-action: manipulation; }
+  * { -webkit-user-select: none; user-select: none; }
+  input, textarea { -webkit-user-select: text; user-select: text; }
+  html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--navy); overflow: hidden; }
+  #app { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  .screen { display: none; flex-direction: column; height: 100%; overflow: hidden; }
+  .screen.active { display: flex; }
+  .header { background: var(--navy); padding: 16px 20px; padding-top: max(16px, env(safe-area-inset-top)); flex-shrink: 0; }
+  .header-row { display: flex; align-items: center; gap: 10px; }
+  .header h1 { color: white; font-size: 20px; font-weight: 700; flex: 1; }
+  .header .subtitle { color: rgba(255,255,255,0.6); font-size: 12px; margin-top: 2px; }
+  .back-btn { background: none; border: none; color: white; font-size: 26px; cursor: pointer; padding: 2px 6px; line-height: 1; }
+  .header-action { background: var(--teal); color: white; border: none; border-radius: 20px; padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+  .header-action.outline { background: rgba(255,255,255,0.18); }
+  .scroll-content { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 16px; padding-bottom: 50px; }
+  .search-bar { background: white; border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px; display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .search-bar input { border: none; outline: none; flex: 1; font-size: 15px; color: var(--navy); background: none; }
+  .patient-card { background: white; border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 10px; display: flex; align-items: center; gap: 12px; cursor: pointer; }
+  .patient-card:active { background: var(--surface-alt); }
+  .avatar { width: 44px; height: 44px; border-radius: 50%; background: var(--navy); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px; flex-shrink: 0; }
+  .patient-info { flex: 1; min-width: 0; }
+  .patient-name { font-size: 16px; font-weight: 600; color: var(--navy); }
+  .patient-meta { font-size: 13px; color: var(--muted); margin-top: 2px; }
+  .chevron { color: var(--muted); font-size: 20px; }
+  .delete-btn { background: none; border: none; color: var(--muted); font-size: 18px; cursor: pointer; padding: 6px; }
+  .tabs { display: flex; background: white; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .tab { flex: 1; padding: 13px 6px; text-align: center; font-size: 13px; font-weight: 500; color: var(--muted); cursor: pointer; border-bottom: 3px solid transparent; }
+  .tab.active { color: var(--teal); border-bottom-color: var(--teal); font-weight: 700; }
+  .card { background: white; border-radius: 12px; overflow: hidden; margin-bottom: 14px; display: flex; box-shadow: 0 1px 4px rgba(10,37,64,0.06); }
+  .card-bar { width: 5px; flex-shrink: 0; }
+  .card-inner { flex: 1; padding: 16px; }
+  .card-title { font-size: 16px; font-weight: 700; color: var(--navy); margin-bottom: 14px; }
+  .info-row { display: flex; padding: 7px 0; border-bottom: 1px solid var(--surface-alt); }
+  .info-row:last-child { border-bottom: none; }
+  .info-label { font-size: 12px; color: var(--muted); width: 130px; flex-shrink: 0; padding-top: 1px; }
+  .info-val { font-size: 14px; color: var(--navy); flex: 1; white-space: pre-wrap; }
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 5px; }
+  .field input, .field textarea, .field select { width: 100%; background: var(--surface-alt); border: 1px solid var(--border); border-radius: 8px; padding: 11px 14px; font-size: 15px; color: var(--navy); outline: none; font-family: inherit; -webkit-appearance: none; appearance: none; }
+  .field textarea { min-height: 90px; resize: vertical; }
+  .field input:focus, .field textarea:focus, .field select:focus { border-color: var(--teal); background: white; }
+  .field-row { display: flex; gap: 12px; }
+  .field-row .field { flex: 1; }
+  .before-after { margin-bottom: 14px; }
+  .before-after > label { display: block; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; }
+  .ba-cols { display: flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .ba-col { flex: 1; padding: 12px; background: var(--surface-alt); }
+  .ba-col:first-child { border-right: 1px solid var(--border); }
+  .ba-sublabel { font-size: 11px; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
+  .ba-input-row { display: flex; align-items: center; gap: 4px; }
+  .ba-input-row input { flex: 1; background: none; border: none; outline: none; font-size: 18px; font-weight: 700; color: var(--navy); padding: 4px 0; width: 100%; }
+  .ba-unit { font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .bp-pair { display: flex; align-items: center; gap: 3px; }
+  .bp-slash { font-size: 20px; color: var(--muted); font-weight: 300; }
+  .btn { border: none; border-radius: 24px; padding: 12px 22px; font-size: 15px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+  .btn:active { opacity: 0.8; }
+  .btn-primary { background: var(--teal); color: white; }
+  .btn-secondary { background: none; border: 1.5px solid var(--teal); color: var(--teal); }
+  .btn-danger { background: var(--danger); color: white; }
+  .btn-row { display: flex; gap: 12px; margin-top: 8px; }
+  .btn-row .btn { flex: 1; justify-content: center; }
+  .session-card { background: white; border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 10px; cursor: pointer; }
+  .session-card:active { background: var(--surface-alt); }
+  .session-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+  .session-date { font-size: 15px; font-weight: 700; color: var(--navy); }
+  .session-bio { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .session-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+  .tag { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+  .session-notes-preview { font-size: 13px; color: var(--slate); line-height: 1.5; margin-top: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .sessions-bar { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: white; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .sessions-count { font-size: 14px; font-weight: 600; color: var(--muted); }
+  .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; gap: 10px; text-align: center; }
+  .empty-icon { font-size: 48px; opacity: 0.3; }
+  .empty-title { font-size: 17px; font-weight: 600; color: var(--muted); }
+  .empty-sub { font-size: 14px; color: var(--muted); }
+  #toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: var(--success); color: white; padding: 12px 20px; border-radius: 24px; font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 9999; white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+  #toast.show { opacity: 1; }
+  #toast.error { background: var(--danger); }
+  .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
+  .overlay.show { display: flex; }
+  .dialog { background: white; border-radius: 16px; padding: 24px; width: 100%; max-width: 360px; }
+  .dialog h3 { font-size: 18px; font-weight: 700; color: var(--navy); margin-bottom: 10px; }
+  .dialog p { font-size: 14px; color: var(--slate); line-height: 1.5; margin-bottom: 20px; }
+  .dialog-btns { display: flex; gap: 10px; }
+  .dialog-btns .btn { flex: 1; justify-content: center; }
+  .aspect-chip { padding: 9px 14px; border-radius: 20px; border: 1.5px solid var(--border); background: var(--surface-alt); font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; margin: 0 6px 6px 0; }
+  .aspect-chip.active { color: white; border-color: transparent; }
+  .report-notes-area { width: 100%; background: var(--surface-alt); border: 1px solid var(--border); border-radius: 8px; padding: 14px; font-size: 14px; color: var(--navy); min-height: 120px; resize: vertical; font-family: inherit; outline: none; }
+  .report-notes-area:focus { border-color: var(--teal); background: white; }
+  .disclaimer { font-size: 12px; color: var(--muted); text-align: center; margin-top: 16px; line-height: 1.5; }
+  .bio-card { background: white; border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 10px; display: flex; align-items: center; gap: 12px; }
+  .bio-avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--teal-light); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .bio-info { flex: 1; }
+  .bio-name { font-size: 15px; font-weight: 600; color: var(--navy); }
+  .bio-qual { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 500; align-items: center; justify-content: center; padding: 20px; }
+  .modal-overlay.show { display: flex; }
+  .modal { background: white; border-radius: 20px; padding: 24px; width: 100%; max-width: 420px; max-height: 90vh; overflow-y: auto; }
+  .modal h3 { font-size: 20px; font-weight: 700; color: var(--navy); margin-bottom: 20px; }
+  .no-data { font-size: 14px; color: var(--muted); font-style: italic; }
+  select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%238896A5' d='M1 1l5 5 5-5'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 36px; }
+  .settings-about { text-align: center; padding: 20px; color: var(--muted); font-size: 13px; line-height: 1.6; border-top: 1px solid var(--border); margin-top: 20px; }
+  .setup-section { margin-bottom: 24px; }
+  .setup-section-title { font-size: 16px; font-weight: 700; color: var(--navy); margin-bottom: 14px; padding-bottom: 8px; border-bottom: 2px solid var(--teal-light); }
+  .logo-preview { width: 100%; max-height: 100px; object-fit: contain; border: 1px solid var(--border); border-radius: 8px; padding: 8px; background: white; margin-top: 8px; display: none; }
+  .logo-preview.show { display: block; }
+  .upload-btn { background: var(--surface-alt); border: 1.5px dashed var(--border); border-radius: 8px; padding: 16px; text-align: center; cursor: pointer; color: var(--muted); font-size: 14px; }
+  .upload-btn:hover { border-color: var(--teal); color: var(--teal); }
+  .daily-notes-toggle { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .toggle-label { font-size: 13px; color: var(--slate); flex: 1; }
+  .toggle { position: relative; width: 44px; height: 26px; flex-shrink: 0; }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .slider { position: absolute; inset: 0; background: var(--border); border-radius: 26px; cursor: pointer; transition: 0.3s; }
+  .slider:before { content: ''; position: absolute; height: 20px; width: 20px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: 0.3s; }
+  input:checked + .slider { background: var(--teal); }
+  input:checked + .slider:before { transform: translateX(18px); }
+  .note-include-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--surface-alt); }
+  .note-include-label { font-size: 13px; color: var(--slate); }
+  @media print { #app { display: none; } #print-area { display: block !important; } }
+  #print-area { display: none; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- PATIENT LIST -->
+  <div class="screen active" id="screen-list">
+    <div class="header">
+      <div class="header-row">
+        <div style="flex:1"><h1>BioTrack</h1><div class="subtitle">Biokineticist Practice Management</div></div>
+        <button class="header-action" onclick="showScreen('screen-patient-form',{mode:'new'})">+ New Patient</button>
+        <button class="header-action outline" onclick="showScreen('screen-settings')" style="margin-left:6px">⚙️</button>
+      </div>
+    </div>
+    <div class="scroll-content">
+      <div class="search-bar">
+        <span>🔍</span>
+        <input type="text" placeholder="Search patients…" id="patient-search" oninput="renderPatientList()">
+      </div>
+      <div id="patient-list"></div>
+    </div>
+  </div>
+
+  <!-- PATIENT FORM -->
+  <div class="screen" id="screen-patient-form">
+    <div class="header">
+      <div class="header-row">
+        <button class="back-btn" onclick="goBack()">‹</button>
+        <div style="flex:1"><h1 id="patient-form-title">New Patient</h1><div class="subtitle">Personal &amp; medical details</div></div>
+      </div>
+    </div>
+    <div class="scroll-content">
+      <div class="card"><div class="card-bar" style="background:var(--teal)"></div><div class="card-inner">
+        <div class="card-title">Personal Details</div>
+        <div class="field-row">
+          <div class="field"><label>First Name *</label><input id="pf-first" type="text" placeholder="Given name"></div>
+          <div class="field"><label>Last Name *</label><input id="pf-last" type="text" placeholder="Surname"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>ID / Passport Number</label><input id="pf-id" type="text" placeholder="Namibian ID or passport"></div>
+          <div class="field"><label>Date of Birth</label><input id="pf-dob" type="date"></div>
+        </div>
+        <div class="field"><label>Gender</label><select id="pf-gender"><option value="">Select…</option><option>Female</option><option>Male</option><option>Non-binary / Other</option><option>Prefer not to say</option></select></div>
+        <div class="field"><label>Occupation</label><input id="pf-occupation" type="text" placeholder="e.g. Office worker"></div>
+        <div class="field-row">
+          <div class="field"><label>Phone</label><input id="pf-phone" type="tel" placeholder="+264 …"></div>
+          <div class="field"><label>Email</label><input id="pf-email" type="email" placeholder="patient@email.com"></div>
+        </div>
+        <div class="field"><label>Home Address</label><textarea id="pf-address" placeholder="Street, suburb, city, Namibia"></textarea></div>
+      </div></div>
+
+      <div class="card"><div class="card-bar" style="background:var(--cat-o2)"></div><div class="card-inner">
+        <div class="card-title">Referring / Primary Doctor</div>
+        <div class="field"><label>Doctor Name</label><input id="pf-doc-name" type="text" placeholder="Dr Surname"></div>
+        <div class="field"><label>Practice / Hospital Name</label><input id="pf-doc-practice" type="text" placeholder="Practice or hospital name"></div>
+        <div class="field-row">
+          <div class="field"><label>Phone</label><input id="pf-doc-phone" type="tel" placeholder="+264 …"></div>
+          <div class="field"><label>Email</label><input id="pf-doc-email" type="email" placeholder="doctor@practice.com"></div>
+        </div>
+      </div></div>
+
+      <div class="card"><div class="card-bar" style="background:var(--cat-ortho)"></div><div class="card-inner">
+        <div class="card-title">Next of Kin / Emergency Contact</div>
+        <div class="field-row">
+          <div class="field"><label>Full Name</label><input id="pf-nok-name" type="text" placeholder="Contact person"></div>
+          <div class="field"><label>Relationship</label><input id="pf-nok-rel" type="text" placeholder="e.g. Spouse, Parent"></div>
+        </div>
+        <div class="field"><label>Phone</label><input id="pf-nok-phone" type="tel" placeholder="+264 …"></div>
+      </div></div>
+
+      <div class="card"><div class="card-bar" style="background:var(--cat-glucose)"></div><div class="card-inner">
+        <div class="card-title">Medical Aid</div>
+        <div class="field-row">
+          <div class="field"><label>Medical Aid Name</label><input id="pf-aid" type="text" placeholder="e.g. NHP, Namdeb, Medshield"></div>
+          <div class="field"><label>Member Number</label><input id="pf-aid-num" type="text" placeholder="Membership no."></div>
+        </div>
+      </div></div>
+
+      <div class="card"><div class="card-bar" style="background:var(--cat-bp)"></div><div class="card-inner">
+        <div class="card-title">Medical History &amp; Screening</div>
+        <div class="field"><label>Relevant Medical History</label><textarea id="pf-history" placeholder="Diagnoses, conditions, surgeries…"></textarea></div>
+        <div class="field"><label>Current Medication</label><textarea id="pf-meds" placeholder="List medications and dosages…"></textarea></div>
+        <div class="field"><label>Allergies</label><textarea id="pf-allergies" placeholder="Drug, food, or environmental allergies…"></textarea></div>
+        <div class="field"><label>Additional Notes</label><textarea id="pf-notes" placeholder="Any other relevant information…"></textarea></div>
+      </div></div>
+
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="goBack()">Cancel</button>
+        <button class="btn btn-primary" onclick="savePatient()" style="flex:2">✓ Save Profile</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PATIENT DETAIL -->
+  <div class="screen" id="screen-patient-detail">
+    <div class="header">
+      <div class="header-row">
+        <button class="back-btn" onclick="goBack()">‹</button>
+        <div style="flex:1"><h1 id="detail-name">Patient</h1><div class="subtitle" id="detail-sub"></div></div>
+        <button class="header-action outline" onclick="editCurrentPatient()">✏️ Edit</button>
+      </div>
+    </div>
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('overview')">Overview</div>
+      <div class="tab" onclick="switchTab('sessions')">Sessions</div>
+      <div class="tab" onclick="switchTab('report')">Report</div>
+    </div>
+    <div id="tab-overview" class="scroll-content"><div id="overview-content"></div></div>
+    <div id="tab-sessions" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
+      <div class="sessions-bar">
+        <span class="sessions-count" id="sessions-count">0 sessions</span>
+        <button class="btn btn-primary" style="padding:8px 16px;font-size:13px" onclick="showScreen('screen-entry-form',{mode:'new'})">+ New Session</button>
+      </div>
+      <div class="scroll-content" style="padding-top:12px"><div id="sessions-list"></div></div>
+    </div>
+    <div id="tab-report" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
+      <div class="scroll-content" id="report-tab-content"></div>
+    </div>
+  </div>
+
+  <!-- ENTRY FORM -->
+  <div class="screen" id="screen-entry-form">
+    <div class="header">
+      <div class="header-row">
+        <button class="back-btn" onclick="goBack()">‹</button>
+        <div style="flex:1"><h1 id="entry-form-title">New Session</h1><div class="subtitle">Measurements &amp; clinical notes</div></div>
+      </div>
+    </div>
+    <div class="scroll-content">
+      <div class="card"><div class="card-bar" style="background:var(--teal)"></div><div class="card-inner">
+        <div class="card-title">Session Details</div>
+        <div class="field"><label>Session Date *</label><input type="date" id="ef-date"></div>
+        <div class="field"><label>Biokineticist</label><select id="ef-bio"><option value="">Select…</option></select></div>
+      </div></div>
+      <div class="card"><div class="card-bar" style="background:var(--cat-bp)"></div><div class="card-inner">
+        <div class="card-title">Blood Pressure</div>
+        <div class="before-after">
+          <label>Blood Pressure (SYS / DIA) — mmHg</label>
+          <div class="ba-cols">
+            <div class="ba-col">
+              <div class="ba-sublabel">Before Exercise</div>
+              <div class="bp-pair">
+                <input style="background:none;border:none;outline:none;font-size:18px;font-weight:700;color:var(--navy);width:48px" id="ef-bp-sys-pre" type="number" placeholder="SYS">
+                <span class="bp-slash">/</span>
+                <input style="background:none;border:none;outline:none;font-size:18px;font-weight:700;color:var(--navy);width:48px" id="ef-bp-dia-pre" type="number" placeholder="DIA">
+                <span class="ba-unit">mmHg</span>
+              </div>
+            </div>
+            <div class="ba-col">
+              <div class="ba-sublabel">After Exercise</div>
+              <div class="bp-pair">
+                <input style="background:none;border:none;outline:none;font-size:18px;font-weight:700;color:var(--navy);width:48px" id="ef-bp-sys-post" type="number" placeholder="SYS">
+                <span class="bp-slash">/</span>
+                <input style="background:none;border:none;outline:none;font-size:18px;font-weight:700;color:var(--navy);width:48px" id="ef-bp-dia-post" type="number" placeholder="DIA">
+                <span class="ba-unit">mmHg</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="field"><label>Blood Pressure Notes / Symptoms</label><textarea id="ef-bp-notes" placeholder="e.g. Patient reported dizziness post-exercise…"></textarea></div>
+      </div></div>
+      <div class="card"><div class="card-bar" style="background:var(--cat-glucose)"></div><div class="card-inner">
+        <div class="card-title">Blood Glucose</div>
+        <div class="before-after">
+          <label>Blood Glucose (mmol/L)</label>
+          <div class="ba-cols">
+            <div class="ba-col"><div class="ba-sublabel">Before Exercise</div><div class="ba-input-row"><input type="number" step="0.1" id="ef-glucose-pre" placeholder="—"><span class="ba-unit">mmol/L</span></div></div>
+            <div class="ba-col"><div class="ba-sublabel">After Exercise</div><div class="ba-input-row"><input type="number" step="0.1" id="ef-glucose-post" placeholder="—"><span class="ba-unit">mmol/L</span></div></div>
+          </div>
+        </div>
+        <div class="field"><label>Glucose Notes</label><textarea id="ef-glucose-notes" placeholder="e.g. Patient fasted 8 hrs…"></textarea></div>
+      </div></div>
+      <div class="card"><div class="card-bar" style="background:var(--cat-o2)"></div><div class="card-inner">
+        <div class="card-title">Oxygen Saturation (SpO₂)</div>
+        <div class="before-after">
+          <label>SpO₂ (%)</label>
+          <div class="ba-cols">
+            <div class="ba-col"><div class="ba-sublabel">Before Exercise</div><div class="ba-input-row"><input type="number" id="ef-spo2-pre" placeholder="—"><span class="ba-unit">%</span></div></div>
+            <div class="ba-col"><div class="ba-sublabel">After Exercise</div><div class="ba-input-row"><input type="number" id="ef-spo2-post" placeholder="—"><span class="ba-unit">%</span></div></div>
+          </div>
+        </div>
+        <div class="field"><label>SpO₂ Notes</label><textarea id="ef-spo2-notes" placeholder="e.g. Desaturation below 90% at peak intensity…"></textarea></div>
+      </div></div>
+      <div class="card"><div class="card-bar" style="background:var(--cat-body)"></div><div class="card-inner">
+        <div class="card-title">Body Metrics</div>
+        <div class="field-row">
+          <div class="field"><label>Weight (kg)</label><input type="number" step="0.1" id="ef-weight" placeholder="e.g. 72.4"></div>
+          <div class="field"><label>Waist Circumference (cm)</label><input type="number" step="0.1" id="ef-waist" placeholder="e.g. 88"></div>
+        </div>
+      </div></div>
+      <div class="card"><div class="card-bar" style="background:var(--cat-fitness)"></div><div class="card-inner">
+        <div class="card-title">Fitness Assessments</div>
+        <div class="field-row">
+          <div class="field"><label>VO₂ Max (mL/kg/min)</label><input type="number" step="0.1" id="ef-vo2" placeholder="e.g. 42.5"></div>
+          <div class="field"><label>FTP (Watts)</label><input type="number" id="ef-ftp" placeholder="e.g. 210"></div>
+        </div>
+      </div></div>
+      <div class="card"><div class="card-bar" style="background:var(--cat-ortho)"></div><div class="card-inner">
+        <div class="card-title">Orthopedic Notes</div>
+        <div class="field"><label>Assessment &amp; Notes</label><textarea id="ef-ortho" placeholder="e.g. Right knee — reduced flexion ROM (0–100°). Pain VAS 3/10 during lunge…"></textarea></div>
+      </div></div>
+      <div class="card"><div class="card-bar" style="background:var(--muted)"></div><div class="card-inner">
+        <div class="card-title">General Session Notes</div>
+        <div class="field"><label>Overall Notes</label><textarea id="ef-session-notes" placeholder="Programme adjustments, patient response, next session goals…"></textarea></div>
+      </div></div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="goBack()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveEntry()" style="flex:2">✓ Save Session</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SESSION DETAIL -->
+  <div class="screen" id="screen-session-detail">
+    <div class="header">
+      <div class="header-row">
+        <button class="back-btn" onclick="goBack()">‹</button>
+        <div style="flex:1"><h1 id="sd-title">Session</h1><div class="subtitle" id="sd-sub"></div></div>
+        <button class="header-action outline" onclick="editCurrentEntry()">✏️ Edit</button>
+      </div>
+    </div>
+    <div class="scroll-content" id="session-detail-content"></div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="screen" id="screen-settings">
+    <div class="header">
+      <div class="header-row">
+        <button class="back-btn" onclick="goBack()">‹</button>
+        <h1>Settings &amp; Setup</h1>
+      </div>
+    </div>
+    <div class="scroll-content">
+
+      <!-- Practice Setup -->
+      <div class="setup-section">
+        <div class="setup-section-title">🏥 Practice Setup</div>
+        <div class="field"><label>Practice / Clinic Name</label><input id="setup-practice" type="text" placeholder="e.g. Windhoek Biokinetics Centre"></div>
+        <div class="field"><label>Practice Address</label><textarea id="setup-address" placeholder="Street, suburb, Windhoek, Namibia" style="min-height:60px"></textarea></div>
+        <div class="field-row">
+          <div class="field"><label>Practice Phone</label><input id="setup-phone" type="tel" placeholder="+264 …"></div>
+          <div class="field"><label>Practice Email</label><input id="setup-email" type="email" placeholder="info@practice.com"></div>
+        </div>
+        <div class="field"><label>Country</label><select id="setup-country">
+          <option value="Namibia">Namibia</option>
+          <option value="South Africa">South Africa</option>
+          <option value="Botswana">Botswana</option>
+          <option value="Zimbabwe">Zimbabwe</option>
+          <option value="Other">Other</option>
+        </select></div>
+        <div class="field"><label>Registering Body</label><input id="setup-regbody" type="text" placeholder="e.g. HPCNA"></div>
+        <div class="field"><label>Practice Logo</label>
+          <div class="upload-btn" onclick="document.getElementById('logo-upload').click()">📎 Tap to upload logo image</div>
+          <input type="file" id="logo-upload" accept="image/*" style="display:none" onchange="uploadLogo(this)">
+          <img id="logo-preview" class="logo-preview" alt="Practice logo">
+          <div id="logo-remove-btn" style="display:none;margin-top:6px">
+            <button class="btn btn-secondary" style="padding:7px 14px;font-size:12px" onclick="removeLogo()">Remove Logo</button>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="saveSetup()" style="width:100%;justify-content:center;margin-top:4px">Save Practice Settings</button>
+      </div>
+
+      <!-- Biokineticists -->
+      <div class="setup-section">
+        <div class="setup-section-title">👤 Biokineticists</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <div style="font-size:13px;color:var(--muted)">Practitioners who log sessions</div>
+          <button class="btn btn-primary" style="padding:8px 14px;font-size:13px" onclick="showBioModal()">+ Add</button>
+        </div>
+        <div id="bio-list"></div>
+      </div>
+
+      <div class="settings-about">
+        <strong>BioTrack v2.0 — Namibia Edition</strong><br>
+        All patient data is stored locally on this device only.<br>
+        No data is ever transmitted to any server or internet service.<br><br>
+        For use by registered biokineticists (HPCNA).
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm dialog -->
+<div class="overlay" id="confirm-overlay">
+  <div class="dialog">
+    <h3 id="confirm-title">Confirm</h3>
+    <p id="confirm-msg"></p>
+    <div class="dialog-btns">
+      <button class="btn btn-secondary" onclick="closeConfirm()">Cancel</button>
+      <button class="btn btn-danger" id="confirm-ok">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- Bio modal -->
+<div class="modal-overlay" id="bio-modal">
+  <div class="modal">
+    <h3 id="bio-modal-title">Add Biokineticist</h3>
+    <div class="field"><label>Full Name</label><input type="text" id="bio-name-input" placeholder="e.g. Jackie Retief"></div>
+    <div class="field"><label>Qualifications / Registration</label><input type="text" id="bio-title-input" placeholder="e.g. BSc (Biokinetics), HPCNA BK-XXXXX"></div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="closeBioModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveBio()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast">✓ Saved</div>
+<div id="print-area"></div>
+
+<script>
+// ═══════════ DATA LAYER ═══════════
+const DB = {
+  get(k) { try { return JSON.parse(localStorage.getItem('bt2_'+k))||[]; } catch { return []; } },
+  set(k,v) { localStorage.setItem('bt2_'+k, JSON.stringify(v)); },
+  getObj(k) { try { return JSON.parse(localStorage.getItem('bt2_'+k))||{}; } catch { return {}; } },
+  setObj(k,v) { localStorage.setItem('bt2_'+k, JSON.stringify(v)); }
+};
+const getPatients = () => DB.get('patients');
+const savePatients = p => DB.set('patients', p);
+const getBios = () => DB.get('bios');
+const saveBios = b => DB.set('bios', b);
+const getEntries = () => DB.get('entries');
+const saveEntries = e => DB.set('entries', e);
+const getSetup = () => DB.getObj('setup');
+const saveSetup2 = s => DB.setObj('setup', s);
+function nextId() { const o=DB.getObj('nid'); const n=(o.n||1); DB.setObj('nid',{n:n+1}); return n; }
+
+// Seed default biokineticists
+if (getBios().length === 0) {
+  saveBios([
+    {id:1, name:'Jackie Retief',    title:'BSc (Biokinetics), HPCNA'},
+    {id:2, name:'Riaan De Beer',    title:'BSc (Biokinetics), HPCNA'},
+    {id:3, name:'Chenelle Currie',  title:'BSc (Biokinetics), HPCNA'},
+    {id:4, name:'Elmarine Maritz',  title:'BSc (Biokinetics), HPCNA'},
+  ]);
+}
+
+// Seed default setup
+if (!getSetup().country) {
+  saveSetup2({ country:'Namibia', regbody:'HPCNA', practice:'', address:'', phone:'', email:'', logo:'' });
+}
+
+// ═══════════ NAV ═══════════
+let screenStack = ['screen-list'];
+let currentPatientId = null;
+let currentEntryId = null;
+let currentTab = 'overview';
+let editingBioId = null;
+
+function showScreen(id, opts={}) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  screenStack.push(id);
+  if (id==='screen-list') renderPatientList();
+  if (id==='screen-patient-form') setupPatientForm(opts);
+  if (id==='screen-patient-detail') renderPatientDetail();
+  if (id==='screen-entry-form') setupEntryForm(opts);
+  if (id==='screen-session-detail') renderSessionDetail();
+  if (id==='screen-settings') renderSettings();
+}
+
+function goBack() {
+  screenStack.pop();
+  const prev = screenStack[screenStack.length-1]||'screen-list';
+  screenStack.pop();
+  showScreen(prev);
+}
+
+// ═══════════ TOAST ═══════════
+let toastT;
+function showToast(msg, type='success') {
+  const t=document.getElementById('toast');
+  t.textContent=(type==='success'?'✓ ':'✗ ')+msg;
+  t.className='show'+(type==='error'?' error':'');
+  clearTimeout(toastT);
+  toastT=setTimeout(()=>t.className='',2500);
+}
+
+// ═══════════ CONFIRM ═══════════
+function showConfirm(title,msg,onOk) {
+  document.getElementById('confirm-title').textContent=title;
+  document.getElementById('confirm-msg').textContent=msg;
+  document.getElementById('confirm-ok').onclick=()=>{closeConfirm();onOk();};
+  document.getElementById('confirm-overlay').classList.add('show');
+}
+function closeConfirm() { document.getElementById('confirm-overlay').classList.remove('show'); }
+
+// ═══════════ HELPERS ═══════════
+function fmtDate(d) {
+  if (!d) return '—';
+  const dt=new Date(d+'T00:00:00');
+  return dt.toLocaleDateString('en-NA',{day:'2-digit',month:'long',year:'numeric'});
+}
+function fmtDateShort(d) {
+  if (!d) return '—';
+  return new Date(d+'T00:00:00').toLocaleDateString('en-NA',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
+}
+function calcAge(dob) {
+  if (!dob) return null;
+  return Math.floor((Date.now()-new Date(dob))/(365.25*86400000));
+}
+function initials(f,l) { return ((f||'')[0]||'').toUpperCase()+((l||'')[0]||'').toUpperCase(); }
+function val(id) { return (document.getElementById(id)||{}).value||''; }
+function setVal(id,v) { const el=document.getElementById(id); if(el) el.value=v||''; }
+function todayStr() { return new Date().toISOString().slice(0,10); }
+
+// ═══════════ PATIENT LIST ═══════════
+function renderPatientList() {
+  const q=(document.getElementById('patient-search')||{}).value?.toLowerCase()||'';
+  let pts=getPatients();
+  if(q) pts=pts.filter(p=>(p.first+' '+p.last).toLowerCase().includes(q)||(p.id_num||'').toLowerCase().includes(q));
+  pts.sort((a,b)=>(a.last||'').localeCompare(b.last||''));
+  const el=document.getElementById('patient-list');
+  if(!pts.length){
+    el.innerHTML=`<div class="empty-state"><div class="empty-icon">👥</div><div class="empty-title">No patients yet</div><div class="empty-sub">Tap 'New Patient' to add the first patient profile.</div></div>`;
+    return;
+  }
+  el.innerHTML=pts.map(p=>{
+    const age=calcAge(p.dob);
+    const meta=[age!==null?age+' yrs':null,p.doc_name?'Dr '+p.doc_name:null].filter(Boolean).join(' · ');
+    return `<div class="patient-card" onclick="openPatient(${p.id})">
+      <div class="avatar">${initials(p.first,p.last)}</div>
+      <div class="patient-info">
+        <div class="patient-name">${p.last}, ${p.first}</div>
+        ${meta?`<div class="patient-meta">${meta}</div>`:''}
+      </div>
+      <button class="delete-btn" onclick="event.stopPropagation();confirmDeletePatient(${p.id})">🗑</button>
+      <span class="chevron">›</span>
+    </div>`;
+  }).join('');
+}
+function openPatient(id) { currentPatientId=id; currentTab='overview'; showScreen('screen-patient-detail'); }
+function confirmDeletePatient(id) {
+  const p=getPatients().find(x=>x.id===id);
+  showConfirm('Remove Patient',`Remove ${p.first} ${p.last}? All session data will be permanently deleted.`,()=>{
+    savePatients(getPatients().filter(x=>x.id!==id));
+    saveEntries(getEntries().filter(e=>e.patient_id!==id));
+    showToast('Patient removed'); renderPatientList();
+  });
+}
+
+// ═══════════ PATIENT FORM ═══════════
+function setupPatientForm(opts) {
+  const fields=['first','last','id-num','dob','gender','occupation','phone','email','address',
+    'doc-name','doc-practice','doc-phone','doc-email','nok-name','nok-rel','nok-phone',
+    'aid','aid-num','history','meds','allergies','notes'];
+  if(opts.mode==='edit'){
+    document.getElementById('patient-form-title').textContent='Edit Patient Profile';
+    const p=getPatients().find(x=>x.id===currentPatientId);
+    if(p){
+      setVal('pf-first',p.first); setVal('pf-last',p.last); setVal('pf-id',p.id_num);
+      setVal('pf-dob',p.dob); setVal('pf-gender',p.gender); setVal('pf-occupation',p.occupation);
+      setVal('pf-phone',p.phone); setVal('pf-email',p.email); setVal('pf-address',p.address);
+      setVal('pf-doc-name',p.doc_name); setVal('pf-doc-practice',p.doc_practice);
+      setVal('pf-doc-phone',p.doc_phone); setVal('pf-doc-email',p.doc_email);
+      setVal('pf-nok-name',p.nok_name); setVal('pf-nok-rel',p.nok_rel); setVal('pf-nok-phone',p.nok_phone);
+      setVal('pf-aid',p.aid); setVal('pf-aid-num',p.aid_num); setVal('pf-history',p.history);
+      setVal('pf-meds',p.meds); setVal('pf-allergies',p.allergies); setVal('pf-notes',p.notes);
+    }
+  } else {
+    document.getElementById('patient-form-title').textContent='New Patient';
+    fields.forEach(f=>{ const el=document.getElementById('pf-'+f); if(el) el.value=''; });
+  }
+}
+function savePatient() {
+  const first=val('pf-first').trim(), last=val('pf-last').trim();
+  if(!first||!last){showToast('First and last name are required','error');return;}
+  const data={first,last,id_num:val('pf-id'),dob:val('pf-dob'),gender:val('pf-gender'),
+    occupation:val('pf-occupation'),phone:val('pf-phone'),email:val('pf-email'),address:val('pf-address'),
+    doc_name:val('pf-doc-name'),doc_practice:val('pf-doc-practice'),doc_phone:val('pf-doc-phone'),doc_email:val('pf-doc-email'),
+    nok_name:val('pf-nok-name'),nok_rel:val('pf-nok-rel'),nok_phone:val('pf-nok-phone'),
+    aid:val('pf-aid'),aid_num:val('pf-aid-num'),history:val('pf-history'),meds:val('pf-meds'),
+    allergies:val('pf-allergies'),notes:val('pf-notes')};
+  const patients=getPatients();
+  if(currentPatientId&&patients.find(x=>x.id===currentPatientId)){
+    const idx=patients.findIndex(x=>x.id===currentPatientId);
+    patients[idx]={...patients[idx],...data}; savePatients(patients);
+    showToast('Patient updated'); goBack(); setTimeout(()=>renderPatientDetail(),100);
+  } else {
+    data.id=nextId(); patients.push(data); savePatients(patients);
+    currentPatientId=data.id; showToast('Patient created');
+    screenStack=['screen-list']; showScreen('screen-patient-detail');
+  }
+}
+function editCurrentPatient(){showScreen('screen-patient-form',{mode:'edit'});}
+
+// ═══════════ PATIENT DETAIL ═══════════
+function switchTab(tab) {
+  currentTab=tab;
+  ['overview','sessions','report'].forEach((t,i)=>{
+    document.querySelectorAll('.tab')[i].classList.toggle('active',t===tab);
+  });
+  document.getElementById('tab-overview').style.display=tab==='overview'?'block':'none';
+  document.getElementById('tab-sessions').style.display=tab==='sessions'?'flex':'none';
+  document.getElementById('tab-report').style.display=tab==='report'?'flex':'none';
+  if(tab==='sessions') renderSessions();
+  if(tab==='report') renderReportTab();
+}
+function renderPatientDetail(){
+  const p=getPatients().find(x=>x.id===currentPatientId);
+  if(!p) return;
+  const age=calcAge(p.dob);
+  document.getElementById('detail-name').textContent=p.first+' '+p.last;
+  document.getElementById('detail-sub').textContent=[age!==null?age+' years':null,p.gender].filter(Boolean).join(' · ');
+  function infoRow(label,value){
+    if(!value) return '';
+    return `<div class="info-row"><span class="info-label">${label}</span><span class="info-val">${value}</span></div>`;
+  }
+  function block(title,color,rows){
+    const content=rows.filter(Boolean).join('');
+    return `<div class="card"><div class="card-bar" style="background:${color}"></div><div class="card-inner">
+      <div class="card-title">${title}</div>
+      ${content||'<div class="no-data">No information recorded</div>'}
+    </div></div>`;
+  }
+  document.getElementById('overview-content').innerHTML=
+    block('Personal','var(--teal)',[
+      infoRow('Date of Birth',p.dob?fmtDate(p.dob)+(age!==null?` (${age} yrs)`:''):''),
+      infoRow('ID / Passport',p.id_num),infoRow('Gender',p.gender),
+      infoRow('Occupation',p.occupation),infoRow('Phone',p.phone),
+      infoRow('Email',p.email),infoRow('Address',p.address),
+    ])+
+    block('Referring Doctor','var(--cat-o2)',[
+      infoRow('Name',p.doc_name?'Dr '+p.doc_name:''),infoRow('Practice',p.doc_practice),
+      infoRow('Phone',p.doc_phone),infoRow('Email',p.doc_email),
+    ])+
+    block('Next of Kin','var(--cat-ortho)',[
+      infoRow('Name',p.nok_name),infoRow('Relationship',p.nok_rel),infoRow('Phone',p.nok_phone),
+    ])+
+    block('Medical Aid','var(--cat-glucose)',[
+      infoRow('Scheme',p.aid),infoRow('Member No.',p.aid_num),
+    ])+
+    block('Medical History','var(--cat-bp)',[
+      infoRow('History',p.history),infoRow('Medication',p.meds),
+      infoRow('Allergies',p.allergies),infoRow('Notes',p.notes),
+    ]);
+  switchTab(currentTab);
+}
+
+// ═══════════ SESSIONS ═══════════
+function renderSessions(){
+  const entries=getEntries().filter(e=>e.patient_id===currentPatientId).sort((a,b)=>b.date.localeCompare(a.date));
+  const bios=getBios();
+  document.getElementById('sessions-count').textContent=entries.length+' session'+(entries.length!==1?'s':'');
+  const CATS=[
+    {key:'bp',label:'BP',color:'var(--cat-bp)',check:e=>e.bp_sys_pre||e.bp_sys_post},
+    {key:'glucose',label:'Glucose',color:'var(--cat-glucose)',check:e=>e.glucose_pre||e.glucose_post},
+    {key:'spo2',label:'SpO₂',color:'var(--cat-o2)',check:e=>e.spo2_pre||e.spo2_post},
+    {key:'body',label:'Body',color:'var(--cat-body)',check:e=>e.weight||e.waist},
+    {key:'fitness',label:'Fitness',color:'var(--cat-fitness)',check:e=>e.vo2max||e.ftp},
+    {key:'ortho',label:'Ortho',color:'var(--cat-ortho)',check:e=>e.ortho_notes},
+  ];
+  const el=document.getElementById('sessions-list');
+  if(!entries.length){
+    el.innerHTML=`<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">No sessions recorded</div><div class="empty-sub">Tap 'New Session' to log the first entry.</div></div>`;
+    return;
+  }
+  el.innerHTML=entries.map(e=>{
+    const bio=bios.find(b=>b.id===e.bio_id);
+    const tags=CATS.filter(c=>c.check(e)).map(c=>`<span class="tag" style="background:${c.color}22;color:${c.color}">${c.label}</span>`).join('');
+    return `<div class="session-card" onclick="openSession(${e.id})">
+      <div class="session-top">
+        <div><div class="session-date">${fmtDateShort(e.date)}</div>${bio?`<div class="session-bio">${bio.name}</div>`:''}</div>
+        <button class="delete-btn" onclick="event.stopPropagation();confirmDeleteEntry(${e.id})">🗑</button>
+      </div>
+      <div class="session-tags">${tags}</div>
+      ${e.session_notes?`<div class="session-notes-preview">${e.session_notes}</div>`:''}
+    </div>`;
+  }).join('');
+}
+function openSession(id){currentEntryId=id;showScreen('screen-session-detail');}
+function confirmDeleteEntry(id){
+  showConfirm('Delete Session','This session record will be permanently deleted.',()=>{
+    saveEntries(getEntries().filter(e=>e.id!==id));
+    showToast('Session deleted');renderSessions();
+  });
+}
+
+// ═══════════ ENTRY FORM ═══════════
+function setupEntryForm(opts){
+  const bios=getBios();
+  const bioSel=document.getElementById('ef-bio');
+  bioSel.innerHTML='<option value="">Select…</option>'+bios.map(b=>`<option value="${b.id}">${b.name}</option>`).join('');
+  const fields=['bp-sys-pre','bp-dia-pre','bp-sys-post','bp-dia-post','bp-notes',
+    'glucose-pre','glucose-post','glucose-notes','spo2-pre','spo2-post','spo2-notes',
+    'weight','waist','vo2','ftp','ortho','session-notes'];
+  if(opts.mode==='edit'){
+    document.getElementById('entry-form-title').textContent='Edit Session';
+    const e=getEntries().find(x=>x.id===currentEntryId);
+    if(e){
+      setVal('ef-date',e.date); setVal('ef-bio',e.bio_id);
+      setVal('ef-bp-sys-pre',e.bp_sys_pre); setVal('ef-bp-dia-pre',e.bp_dia_pre);
+      setVal('ef-bp-sys-post',e.bp_sys_post); setVal('ef-bp-dia-post',e.bp_dia_post);
+      setVal('ef-bp-notes',e.bp_notes);
+      setVal('ef-glucose-pre',e.glucose_pre); setVal('ef-glucose-post',e.glucose_post);
+      setVal('ef-glucose-notes',e.glucose_notes);
+      setVal('ef-spo2-pre',e.spo2_pre); setVal('ef-spo2-post',e.spo2_post);
+      setVal('ef-spo2-notes',e.spo2_notes);
+      setVal('ef-weight',e.weight); setVal('ef-waist',e.waist);
+      setVal('ef-vo2',e.vo2max); setVal('ef-ftp',e.ftp);
+      setVal('ef-ortho',e.ortho_notes); setVal('ef-session-notes',e.session_notes);
+    }
+  } else {
+    document.getElementById('entry-form-title').textContent='New Session';
+    fields.forEach(f=>{const el=document.getElementById('ef-'+f);if(el)el.value='';});
+    setVal('ef-date',todayStr());
+  }
+}
+function saveEntry(){
+  const date=val('ef-date');
+  if(!date){showToast('Session date is required','error');return;}
+  const data={patient_id:currentPatientId,date,bio_id:val('ef-bio')?parseInt(val('ef-bio')):null,
+    bp_sys_pre:val('ef-bp-sys-pre'),bp_dia_pre:val('ef-bp-dia-pre'),bp_sys_post:val('ef-bp-sys-post'),bp_dia_post:val('ef-bp-dia-post'),bp_notes:val('ef-bp-notes'),
+    glucose_pre:val('ef-glucose-pre'),glucose_post:val('ef-glucose-post'),glucose_notes:val('ef-glucose-notes'),
+    spo2_pre:val('ef-spo2-pre'),spo2_post:val('ef-spo2-post'),spo2_notes:val('ef-spo2-notes'),
+    weight:val('ef-weight'),waist:val('ef-waist'),vo2max:val('ef-vo2'),ftp:val('ef-ftp'),
+    ortho_notes:val('ef-ortho'),session_notes:val('ef-session-notes')};
+  const entries=getEntries();
+  if(currentEntryId&&entries.find(x=>x.id===currentEntryId)){
+    const idx=entries.findIndex(x=>x.id===currentEntryId);
+    entries[idx]={...entries[idx],...data}; saveEntries(entries);
+    showToast('Session updated'); goBack(); setTimeout(()=>renderSessionDetail(),100);
+  } else {
+    data.id=nextId(); entries.push(data); saveEntries(entries);
+    currentEntryId=data.id; showToast('Session saved');
+    screenStack=['screen-list','screen-patient-detail']; currentTab='sessions';
+    showScreen('screen-patient-detail');
+  }
+}
+function editCurrentEntry(){showScreen('screen-entry-form',{mode:'edit'});}
+
+// ═══════════ SESSION DETAIL ═══════════
+function renderSessionDetail(){
+  const e=getEntries().find(x=>x.id===currentEntryId);
+  if(!e) return;
+  const bio=getBios().find(b=>b.id===e.bio_id);
+  document.getElementById('sd-title').textContent=fmtDateShort(e.date);
+  document.getElementById('sd-sub').textContent=bio?bio.name:'';
+  function row(label,value){if(!value)return '';return `<div class="info-row"><span class="info-label">${label}</span><span class="info-val">${value}</span></div>`;}
+  function block(title,color,rows){const c=rows.filter(Boolean).join('');if(!c)return '';return `<div class="card"><div class="card-bar" style="background:${color}"></div><div class="card-inner"><div class="card-title">${title}</div>${c}</div></div>`;}
+  const bpPre=e.bp_sys_pre&&e.bp_dia_pre?`${e.bp_sys_pre}/${e.bp_dia_pre} mmHg`:'';
+  const bpPost=e.bp_sys_post&&e.bp_dia_post?`${e.bp_sys_post}/${e.bp_dia_post} mmHg`:'';
+  document.getElementById('session-detail-content').innerHTML=
+    block('Blood Pressure','var(--cat-bp)',[row('Pre-exercise',bpPre),row('Post-exercise',bpPost),row('Notes',e.bp_notes)])+
+    block('Blood Glucose','var(--cat-glucose)',[row('Pre-exercise',e.glucose_pre?e.glucose_pre+' mmol/L':''),row('Post-exercise',e.glucose_post?e.glucose_post+' mmol/L':''),row('Notes',e.glucose_notes)])+
+    block('Oxygen Saturation (SpO₂)','var(--cat-o2)',[row('Pre-exercise',e.spo2_pre?e.spo2_pre+'%':''),row('Post-exercise',e.spo2_post?e.spo2_post+'%':''),row('Notes',e.spo2_notes)])+
+    block('Body Metrics','var(--cat-body)',[row('Weight',e.weight?e.weight+' kg':''),row('Waist',e.waist?e.waist+' cm':'')])+
+    block('Fitness','var(--cat-fitness)',[row('VO₂ Max',e.vo2max?e.vo2max+' mL/kg/min':''),row('FTP',e.ftp?e.ftp+' W':'')])+
+    block('Orthopedic Notes','var(--cat-ortho)',[row('Notes',e.ortho_notes)])+
+    block('General Session Notes','var(--muted)',[row('Notes',e.session_notes)]);
+}
+
+// ═══════════ REPORT TAB ═══════════
+let rptSelectedAspects = [];
+let rptNotesInclude = {}; // per-session, per-category include toggles
+
+const ASPECTS = [
+  {key:'bp',      label:'Blood Pressure',          color:'#E53E3E'},
+  {key:'glucose', label:'Blood Glucose',            color:'#D69E2E'},
+  {key:'spo2',    label:'Oxygen Saturation (SpO₂)', color:'#3182CE'},
+  {key:'body',    label:'Body Metrics',             color:'#6B46C1'},
+  {key:'fitness', label:'Fitness (VO₂ / FTP)',      color:'#2F855A'},
+  {key:'ortho',   label:'Orthopedic Notes',         color:'#C05621'},
+  {key:'session', label:'General Session Notes',    color:'#8896A5'},
+];
+
+function renderReportTab(){
+  const p=getPatients().find(x=>x.id===currentPatientId);
+  const bios=getBios();
+  const setup=getSetup();
+  rptSelectedAspects=[];
+  rptNotesInclude={};
+
+  const to=todayStr();
+  const from=new Date(Date.now()-30*86400000).toISOString().slice(0,10);
+
+  document.getElementById('report-tab-content').innerHTML=`
+    <!-- Date Range -->
+    <div class="card"><div class="card-bar" style="background:var(--teal)"></div><div class="card-inner">
+      <div class="card-title">Date Range</div>
+      <div class="field-row">
+        <div class="field"><label>From</label><input type="date" id="rpt-from" value="${from}"></div>
+        <div class="field"><label>To</label><input type="date" id="rpt-to" value="${to}"></div>
+      </div>
+    </div></div>
+
+    <!-- Send To -->
+    <div class="card"><div class="card-bar" style="background:var(--cat-o2)"></div><div class="card-inner">
+      <div class="card-title">Send To</div>
+      <div class="field"><label>Doctor / Recipient Name</label><input type="text" id="rpt-doc-name" value="${p&&p.doc_name?'Dr '+p.doc_name:''}" placeholder="Dr Name or recipient"></div>
+      <div class="field"><label>Practice / Organisation</label><input type="text" id="rpt-doc-practice" value="${p&&p.doc_practice?p.doc_practice:''}" placeholder="Practice or hospital name"></div>
+      <div class="field"><label>Email (for your reference)</label><input type="email" id="rpt-doc-email" value="${p&&p.doc_email?p.doc_email:''}" placeholder="doctor@practice.com"></div>
+    </div></div>
+
+    <!-- Introduction Letter -->
+    <div class="card"><div class="card-bar" style="background:var(--navy)"></div><div class="card-inner">
+      <div class="card-title">Introduction to Doctor</div>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:10px">This text appears at the top of the report, after the patient details.</p>
+      <button class="btn btn-secondary" style="padding:8px 14px;font-size:13px;margin-bottom:10px" onclick="generateIntro()">✨ Auto-generate Introduction</button>
+      <textarea class="report-notes-area" id="rpt-intro" placeholder="e.g. Thank you for referring [patient name]. Please find attached a progress report covering their biokineticist sessions…"></textarea>
+    </div></div>
+
+    <!-- Aspects to include -->
+    <div class="card"><div class="card-bar" style="background:var(--navy)"></div><div class="card-inner">
+      <div class="card-title">Include in Report</div>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Select the categories you want to report on.</p>
+      <div id="aspect-chips"></div>
+    </div></div>
+
+    <!-- Per-session notes inclusion (shown after aspects selected) -->
+    <div id="notes-inclusion-section" style="display:none">
+      <div class="card"><div class="card-bar" style="background:var(--muted)"></div><div class="card-inner">
+        <div class="card-title">Include Clinical Notes in Report?</div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Choose which note types to include in the report for each session.</p>
+        <div id="notes-toggles"></div>
+      </div></div>
+    </div>
+
+    <!-- Clinical Commentary -->
+    <div class="card"><div class="card-bar" style="background:var(--muted)"></div><div class="card-inner">
+      <div class="card-title">Clinical Commentary</div>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:10px">Optional summary or additional notes from the biokineticist.</p>
+      <textarea class="report-notes-area" id="rpt-commentary" placeholder="e.g. Patient has shown significant improvement in cardiovascular fitness over the past month…"></textarea>
+    </div></div>
+
+    <!-- Signed by -->
+    <div class="card"><div class="card-bar" style="background:var(--navy)"></div><div class="card-inner">
+      <div class="field"><label>Signed By</label><select id="rpt-bio">
+        <option value="">Select biokineticist…</option>
+        ${bios.map(b=>`<option value="${b.id}">${b.name}</option>`).join('')}
+      </select></div>
+    </div></div>
+
+    <button class="btn btn-primary" style="width:100%;justify-content:center;font-size:16px;padding:16px" onclick="generateReport()">📄 Generate &amp; Print Report</button>
+    <p class="disclaimer">Report is generated and printed locally. Use Safari's Share → Save to Files or AirDrop to send. No data leaves this device.</p>
+  `;
+
+  // Render aspect chips (all unselected by default)
+  renderAspectChips();
+}
+
+function renderAspectChips(){
+  document.getElementById('aspect-chips').innerHTML=ASPECTS.map(a=>`
+    <span class="aspect-chip" id="chip-${a.key}" onclick="toggleAspect('${a.key}')">${a.label}</span>
+  `).join('');
+}
+
+function toggleAspect(key){
+  const chip=document.getElementById('chip-'+key);
+  const asp=ASPECTS.find(a=>a.key===key);
+  if(rptSelectedAspects.includes(key)){
+    rptSelectedAspects=rptSelectedAspects.filter(k=>k!==key);
+    chip.classList.remove('active');
+    chip.style.background='';
+    chip.style.color='';
+  } else {
+    rptSelectedAspects.push(key);
+    chip.classList.add('active');
+    chip.style.background=asp.color;
+    chip.style.color='white';
+  }
+  updateNotesToggles();
+}
+
+function updateNotesToggles(){
+  const noteKeys=['bp','glucose','spo2','ortho','session'];
+  const hasNoteAspects=rptSelectedAspects.some(k=>noteKeys.includes(k));
+  const sec=document.getElementById('notes-inclusion-section');
+  sec.style.display=hasNoteAspects?'block':'none';
+  if(!hasNoteAspects) return;
+
+  const noteAspects=ASPECTS.filter(a=>noteKeys.includes(a.key)&&rptSelectedAspects.includes(a.key));
+  document.getElementById('notes-toggles').innerHTML=noteAspects.map(a=>`
+    <div class="note-include-row">
+      <span class="note-include-label">Include ${a.label} notes</span>
+      <label class="toggle">
+        <input type="checkbox" id="noteinc-${a.key}" checked>
+        <span class="slider"></span>
+      </label>
+    </div>
+  `).join('');
+}
+
+function generateIntro(){
+  const p=getPatients().find(x=>x.id===currentPatientId);
+  if(!p){showToast('No patient selected','error');return;}
+  const docName=val('rpt-doc-name')||'Doctor';
+  const fromDate=fmtDate(val('rpt-from'));
+  const toDate=fmtDate(val('rpt-to'));
+  const pronoun=p.gender==='Female'?'her':p.gender==='Male'?'his':'their';
+  const intro=`Dear ${docName},\n\nThank you for referring ${p.first} ${p.last} to our practice. Please find attached a progress report on ${pronoun} biokineticist sessions covering the period ${fromDate} to ${toDate}.\n\nThis report includes the measurement data recorded during ${pronoun} sessions. Should you have any questions or require further information, please do not hesitate to contact us.\n\nKind regards,`;
+  document.getElementById('rpt-intro').value=intro;
+  showToast('Introduction generated');
+}
+
+// ═══════════ GENERATE REPORT ═══════════
+function generateReport(){
+  const from=val('rpt-from'), to=val('rpt-to');
+  if(!from||!to){showToast('Please set both date fields','error');return;}
+  if(!rptSelectedAspects.length){showToast('Select at least one category','error');return;}
+
+  const p=getPatients().find(x=>x.id===currentPatientId);
+  const bios=getBios();
+  const setup=getSetup();
+  const bioId=val('rpt-bio');
+  const bio=bios.find(b=>String(b.id)===bioId);
+  const entries=getEntries().filter(e=>e.patient_id===currentPatientId&&e.date>=from&&e.date<=to).sort((a,b)=>a.date.localeCompare(b.date));
+
+  if(!entries.length){showToast('No sessions found in that date range','error');return;}
+
+  const age=calcAge(p.dob);
+  const inc=k=>rptSelectedAspects.includes(k);
+  const incNote=k=>{
+    const el=document.getElementById('noteinc-'+k);
+    return el?el.checked:false;
+  };
+
+  const docName=val('rpt-doc-name');
+  const docPractice=val('rpt-doc-practice');
+  const intro=val('rpt-intro');
+  const commentary=val('rpt-commentary');
+
+  // Build table headers
+  let tableHeaders='<th>Date</th><th>Biokineticist</th>';
+  if(inc('bp')) tableHeaders+='<th>BP Pre (mmHg)</th><th>BP Post (mmHg)</th>';
+  if(inc('glucose')) tableHeaders+='<th>Glucose Pre (mmol/L)</th><th>Glucose Post (mmol/L)</th>';
+  if(inc('spo2')) tableHeaders+='<th>SpO₂ Pre</th><th>SpO₂ Post</th>';
+  if(inc('body')) tableHeaders+='<th>Weight (kg)</th><th>Waist (cm)</th>';
+  if(inc('fitness')) tableHeaders+='<th>VO₂ Max (mL/kg/min)</th><th>FTP (W)</th>';
+
+  const tableRows=entries.map(e=>{
+    const bio2=bios.find(b=>b.id===e.bio_id);
+    let cells=`<td>${fmtDate(e.date)}</td><td>${bio2?bio2.name:'—'}</td>`;
+    if(inc('bp')) cells+=`<td>${e.bp_sys_pre&&e.bp_dia_pre?e.bp_sys_pre+'/'+e.bp_dia_pre:'—'}</td><td>${e.bp_sys_post&&e.bp_dia_post?e.bp_sys_post+'/'+e.bp_dia_post:'—'}</td>`;
+    if(inc('glucose')) cells+=`<td>${e.glucose_pre||'—'}</td><td>${e.glucose_post||'—'}</td>`;
+    if(inc('spo2')) cells+=`<td>${e.spo2_pre?e.spo2_pre+'%':'—'}</td><td>${e.spo2_post?e.spo2_post+'%':'—'}</td>`;
+    if(inc('body')) cells+=`<td>${e.weight||'—'}</td><td>${e.waist||'—'}</td>`;
+    if(inc('fitness')) cells+=`<td>${e.vo2max||'—'}</td><td>${e.ftp||'—'}</td>`;
+    return '<tr>'+cells+'</tr>';
+  }).join('');
+
+  // Per-session notes
+  const noteCategories=[
+    {key:'bp',label:'Blood Pressure Notes',field:'bp_notes'},
+    {key:'glucose',label:'Glucose Notes',field:'glucose_notes'},
+    {key:'spo2',label:'SpO₂ Notes',field:'spo2_notes'},
+    {key:'ortho',label:'Orthopedic Notes',field:'ortho_notes'},
+    {key:'session',label:'Session Notes',field:'session_notes'},
+  ].filter(c=>inc(c.key)&&incNote(c.key));
+
+  const notesSection=entries.filter(e=>noteCategories.some(c=>e[c.field])).map(e=>{
+    const bio2=bios.find(b=>b.id===e.bio_id);
+    const notes=noteCategories.filter(c=>e[c.field]).map(c=>`<p><strong>${c.label}:</strong> ${e[c.field]}</p>`).join('');
+    return notes?`<div style="margin-bottom:14px;padding:14px;background:#F4F6F9;border-left:4px solid #0E7C7B;border-radius:4px">
+      <div style="font-weight:bold;font-size:12px;color:#0A2540;margin-bottom:2px">${fmtDate(e.date)}</div>
+      ${bio2?`<div style="font-size:11px;color:#8896A5;margin-bottom:8px">${bio2.name}</div>`:''}
+      ${notes}</div>`:'';
+  }).join('');
+
+  const logoHtml=setup.logo?`<img src="${setup.logo}" style="max-height:80px;max-width:200px;object-fit:contain;margin-bottom:8px" alt="Practice Logo"><br>`:'';
+
+  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8">
+<style>
+  body{font-family:Georgia,serif;color:#1a1a2e;padding:40px;font-size:13px;line-height:1.6;}
+  .header{border-bottom:3px solid #0E7C7B;padding-bottom:20px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:flex-end;}
+  .practice-info{flex:1;}
+  .practice-name{font-size:18px;font-weight:bold;color:#0A2540;}
+  .practice-detail{font-size:11px;color:#8896A5;margin-top:2px;}
+  .report-label{font-size:11px;color:#8896A5;text-transform:uppercase;letter-spacing:1px;text-align:right;}
+  .two-col{display:flex;gap:40px;margin-bottom:24px;}
+  .col{flex:1;}
+  .sec-title{font-size:10px;font-weight:bold;color:#8896A5;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;border-bottom:1px solid #DDE3EC;padding-bottom:4px;}
+  .ir{display:flex;margin-bottom:4px;font-size:12px;}
+  .il{width:120px;color:#8896A5;flex-shrink:0;}
+  .iv{color:#0A2540;font-weight:500;}
+  .intro-box{background:#F4F6F9;border-left:4px solid #0E7C7B;border-radius:4px;padding:16px;margin-bottom:24px;font-size:13px;white-space:pre-wrap;line-height:1.7;}
+  table{width:100%;border-collapse:collapse;margin-bottom:24px;font-size:11px;}
+  th{background:#0A2540;color:white;padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.5px;}
+  td{padding:8px 10px;border-bottom:1px solid #EEF1F6;font-size:12px;}
+  tr:nth-child(even) td{background:#F8FAFB;}
+  .commentary{background:#F4F6F9;border-radius:6px;padding:16px;margin-bottom:24px;white-space:pre-wrap;font-size:13px;}
+  .sig{margin-top:40px;border-top:1px solid #DDE3EC;padding-top:24px;display:flex;justify-content:space-between;align-items:flex-end;}
+  .sig-line{width:200px;border-bottom:1px solid #0A2540;margin-bottom:8px;height:36px;}
+  .sig-name{font-weight:bold;font-size:14px;color:#0A2540;}
+  .sig-info{font-size:11px;color:#8896A5;margin-top:2px;}
+  .footer{margin-top:32px;font-size:10px;color:#8896A5;text-align:center;border-top:1px solid #EEF1F6;padding-top:12px;}
+  .period-badge{display:inline-block;background:#0A2540;color:white;border-radius:4px;padding:4px 10px;font-size:11px;font-weight:bold;margin-bottom:16px;}
+  @media print{body{padding:20px;}}
+</style></head><body>
+
+<div class="header">
+  <div class="practice-info">
+    ${logoHtml}
+    ${setup.practice?`<div class="practice-name">${setup.practice}</div>`:'<div class="practice-name">BioTrack — Clinical Report</div>'}
+    ${setup.address?`<div class="practice-detail">${setup.address}</div>`:''}
+    ${setup.phone?`<div class="practice-detail">${setup.phone}${setup.email?' &nbsp;·&nbsp; '+setup.email:''}</div>`:''}
+    ${setup.regbody?`<div class="practice-detail">Registered with ${setup.regbody}</div>`:''}
+  </div>
+  <div class="report-label">Clinical Progress Report<br>Confidential</div>
+</div>
+
+<div class="two-col">
+  <div class="col">
+    <div class="sec-title">Patient</div>
+    <div class="ir"><span class="il">Full Name</span><span class="iv">${p.first} ${p.last}</span></div>
+    ${p.id_num?`<div class="ir"><span class="il">ID Number</span><span class="iv">${p.id_num}</span></div>`:''}
+    ${p.dob?`<div class="ir"><span class="il">Date of Birth</span><span class="iv">${fmtDate(p.dob)}${age!==null?` (${age} yrs)`:''}</span></div>`:''}
+    ${p.gender?`<div class="ir"><span class="il">Gender</span><span class="iv">${p.gender}</span></div>`:''}
+    ${p.aid?`<div class="ir"><span class="il">Medical Aid</span><span class="iv">${p.aid}${p.aid_num?' — '+p.aid_num:''}</span></div>`:''}
+  </div>
+  <div class="col">
+    <div class="sec-title">Addressed To</div>
+    ${docName?`<div class="ir"><span class="il">Name</span><span class="iv">${docName}</span></div>`:''}
+    ${docPractice?`<div class="ir"><span class="il">Practice</span><span class="iv">${docPractice}</span></div>`:''}
+    ${val('rpt-doc-email')?`<div class="ir"><span class="il">Email</span><span class="iv">${val('rpt-doc-email')}</span></div>`:''}
+  </div>
+</div>
+
+${intro?`<div class="intro-box">${intro}</div>`:''}
+
+<div class="period-badge">Report Period: ${fmtDate(from)} — ${fmtDate(to)} &nbsp;·&nbsp; ${entries.length} session${entries.length!==1?'s':''}</div>
+
+${inc('bp')||inc('glucose')||inc('spo2')||inc('body')||inc('fitness')?`
+<div class="sec-title" style="margin-bottom:10px">Measurement Data</div>
+<table><thead><tr>${tableHeaders}</tr></thead><tbody>${tableRows}</tbody></table>`:''}
+
+${notesSection?`<div class="sec-title" style="margin:0 0 12px">Clinical Notes by Session</div>${notesSection}`:''}
+
+${commentary?`<div class="sec-title" style="margin:16px 0 8px">Biokineticist's Clinical Commentary</div><div class="commentary">${commentary}</div>`:''}
+
+<div class="sig">
+  <div>
+    <div style="font-size:11px;color:#8896A5;margin-bottom:16px">Signed by:</div>
+    <div class="sig-line"></div>
+    <div class="sig-name">${bio?bio.name:'_______________________'}</div>
+    <div class="sig-info">${bio?bio.title:'Registered Biokineticist'}</div>
+    <div class="sig-info">Registered with ${setup.regbody||'HPCNA'}, ${setup.country||'Namibia'}</div>
+    <div class="sig-info" style="margin-top:4px">Date: ${fmtDate(todayStr())}</div>
+  </div>
+  <div style="text-align:right;max-width:220px">
+    <div style="font-size:10px;color:#8896A5">This report is confidential and intended solely for the addressed recipient. Generated by BioTrack.</div>
+  </div>
+</div>
+
+<div class="footer">BioTrack — Biokineticist Practice Management &nbsp;·&nbsp; ${setup.country||'Namibia'} &nbsp;·&nbsp; All data stored locally on device &nbsp;·&nbsp; Not for distribution</div>
+</body></html>`;
+
+  const w=window.open('','_blank');
+  w.document.write(html); w.document.close();
+  setTimeout(()=>w.print(),600);
+}
+
+// ═══════════ SETTINGS ═══════════
+function renderSettings(){
+  const setup=getSetup();
+  setVal('setup-practice',setup.practice);
+  setVal('setup-address',setup.address);
+  setVal('setup-phone',setup.phone);
+  setVal('setup-email',setup.email);
+  setVal('setup-country',setup.country||'Namibia');
+  setVal('setup-regbody',setup.regbody||'HPCNA');
+  if(setup.logo){
+    const img=document.getElementById('logo-preview');
+    img.src=setup.logo; img.classList.add('show');
+    document.getElementById('logo-remove-btn').style.display='block';
+  }
+  renderBioList();
+}
+function saveSetup(){
+  const setup=getSetup();
+  setup.practice=val('setup-practice');
+  setup.address=val('setup-address');
+  setup.phone=val('setup-phone');
+  setup.email=val('setup-email');
+  setup.country=val('setup-country');
+  setup.regbody=val('setup-regbody');
+  saveSetup2(setup);
+  showToast('Practice settings saved');
+}
+function uploadLogo(input){
+  const file=input.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const setup=getSetup(); setup.logo=e.target.result; saveSetup2(setup);
+    const img=document.getElementById('logo-preview');
+    img.src=e.target.result; img.classList.add('show');
+    document.getElementById('logo-remove-btn').style.display='block';
+    showToast('Logo uploaded');
+  };
+  reader.readAsDataURL(file);
+}
+function removeLogo(){
+  const setup=getSetup(); setup.logo=''; saveSetup2(setup);
+  const img=document.getElementById('logo-preview');
+  img.src=''; img.classList.remove('show');
+  document.getElementById('logo-remove-btn').style.display='none';
+  showToast('Logo removed');
+}
+
+function renderBioList(){
+  const bios=getBios();
+  document.getElementById('bio-list').innerHTML=bios.length
+    ?bios.map(b=>`<div class="bio-card">
+        <div class="bio-avatar">👤</div>
+        <div class="bio-info"><div class="bio-name">${b.name}</div><div class="bio-qual">${b.title}</div></div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-secondary" style="padding:7px 12px;font-size:12px" onclick="editBio(${b.id})">✏️</button>
+          <button class="delete-btn" onclick="confirmDeleteBio(${b.id})">🗑</button>
+        </div>
+      </div>`).join('')
+    :'<div class="empty-state" style="padding:24px"><div class="empty-title">No biokineticists added</div></div>';
+}
+function showBioModal(id){
+  editingBioId=id||null;
+  const bio=id?getBios().find(b=>b.id===id):null;
+  document.getElementById('bio-modal-title').textContent=bio?'Edit Biokineticist':'Add Biokineticist';
+  document.getElementById('bio-name-input').value=bio?bio.name:'';
+  document.getElementById('bio-title-input').value=bio?bio.title:'BSc (Biokinetics), HPCNA';
+  document.getElementById('bio-modal').classList.add('show');
+  setTimeout(()=>document.getElementById('bio-name-input').focus(),100);
+}
+function editBio(id){showBioModal(id);}
+function closeBioModal(){document.getElementById('bio-modal').classList.remove('show');editingBioId=null;}
+function saveBio(){
+  const name=document.getElementById('bio-name-input').value.trim();
+  const title=document.getElementById('bio-title-input').value.trim();
+  if(!name){showToast('Name is required','error');return;}
+  const bios=getBios();
+  if(editingBioId){
+    const idx=bios.findIndex(b=>b.id===editingBioId);
+    bios[idx]={...bios[idx],name,title};
+  } else {
+    bios.push({id:nextId(),name,title});
+  }
+  saveBios(bios); closeBioModal();
+  showToast(editingBioId?'Biokineticist updated':'Biokineticist added');
+  renderBioList();
+}
+function confirmDeleteBio(id){
+  const b=getBios().find(x=>x.id===id);
+  showConfirm('Remove Biokineticist',`Remove ${b.name}? Existing session records will be retained.`,()=>{
+    saveBios(getBios().filter(x=>x.id!==id));
+    showToast('Removed'); renderBioList();
+  });
+}
+
+
+// ═══════════ iPAD SAFARI TOUCH FIX ═══════════
+// iPad Safari doesn't fire click on non-anchor/button elements reliably
+// This bridges touchend to click for all onclick elements
+document.addEventListener('touchend', function(e) {
+  const el = e.target.closest('[onclick]');
+  if (el && e.cancelable) {
+    e.preventDefault();
+    el.click();
+  }
+}, { passive: false });
+// ═══════════ INIT ═══════════
+renderPatientList();
+</script>
+</body>
+</html>
